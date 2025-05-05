@@ -1,13 +1,12 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
-require("dotenv").config();
+const admin = require("firebase-admin");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
-
-const admin = require("firebase-admin");
 
 // ✅ Load Firebase service account from base64 env variable
 const serviceAccount = JSON.parse(
@@ -87,10 +86,10 @@ ref.on("child_changed", async (snapshot) => {
 
       if (confirmedStatus === status) {
         if (status === "Alarm" && sentMessages[inputName] !== "Alarm") {
-          sendLineMessage(line_message, inputName, status, line_message);
+          await sendLineMessage(line_message, inputName, status, line_message);
           sentMessages[inputName] = "Alarm";
         } else if (status === "Clear Alarm" && sentMessages[inputName] === "Alarm") {
-          sendLineMessage(line_message, inputName, status, line_message);
+          await sendLineMessage(line_message, inputName, status, line_message);
           sentMessages[inputName] = "Clear";
         } else if (status === "normal") {
           sentMessages[inputName] = false;
