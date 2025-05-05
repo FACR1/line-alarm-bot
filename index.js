@@ -8,57 +8,41 @@ app.use(express.json());
 app.use(cors());
 
 const admin = require("firebase-admin");
+const serviceAccount = require("./serviceAccountKey.json");
 
-// ✅ แปลงค่า Base64 ของ Firebase service account
-const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-let serviceAccount;
-
-try {
-  // แปลง Base64 กลับเป็น JSON
-  const serviceAccountJson = Buffer.from(serviceAccountBase64, "base64").toString("utf8");
-
-  // ตรวจสอบว่าเป็น JSON ที่ถูกต้อง
-  serviceAccount = JSON.parse(serviceAccountJson);
-
-  // ✅ Initialize Firebase
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: "https://new-alarm-fac-r1-v5-default-rtdb.asia-southeast1.firebasedatabase.app",
-  });
-
-  console.log("✅ Firebase initialized successfully.");
-} catch (error) {
-  console.error("❌ Error loading Firebase service account:", error.message);
-  process.exit(1);  // ออกจากโปรแกรมเมื่อเกิดข้อผิดพลาด
-}
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://new-alarm-fac-r1-v5-default-rtdb.asia-southeast1.firebasedatabase.app"
+});
 
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID;
+const LINE_USER_ID = "U19981508421d15d58f561bc47278cfc1"; // <-- เพิ่ม User ID ที่ต้องการส่งหา
+
 const db = admin.database();
 const ref = db.ref("/alarm_data");
 
 const sentMessages = {};
 
-// ✅ ส่งข้อความ LINE
+// ✅ ฟังก์ชันส่งข้อความ LINE
 async function sendLineMessage(message, inputName, status, line_message) {
   try {
     const response = await axios.post(
       "https://api.line.me/v2/bot/message/push",
       {
-        to: LINE_GROUP_ID,
+        to: LINE_GROUP_ID, // หรือจะเปลี่ยนเป็น LINE_GROUP_ID ถ้าส่งหากลุ่ม
         messages: [
           {
             type: "text",
-            text: `🔔 ${inputName}\nStatus: ${status}\nMessage: ${line_message}\nTime: ${new Date().toLocaleString()}`,
-          },
-        ],
+            text: `🔔 ${inputName}\nStatus: ${status}\nMessage: ${line_message}\nTime: ${new Date().toLocaleString()}`
+          }
+        ]
       },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
-        },
+          Authorization: `Bearer ${LINE_ACCESS_TOKEN}`
+        }
       }
     );
 
@@ -69,7 +53,7 @@ async function sendLineMessage(message, inputName, status, line_message) {
   }
 }
 
-// ✅ ตรวจจับการเปลี่ยนแปลงใน Firebase
+// ✅ Firebase Listener พร้อมการยืนยันสถานะก่อนส่ง
 ref.on("child_changed", async (snapshot) => {
   const inputName = snapshot.key;
   const inputData = snapshot.val();
@@ -85,6 +69,7 @@ ref.on("child_changed", async (snapshot) => {
 
   console.log(`[${new Date().toISOString()}] 📡 Data changed for ${inputName}:`, latestData);
 
+  // ✅ รอ 2 วินาทีเพื่อ confirm ว่าสถานะยังเหมือนเดิม
   setTimeout(async () => {
     try {
       const latestSnapshot = await snapshot.ref.once("value");
@@ -117,7 +102,7 @@ ref.on("child_changed", async (snapshot) => {
   }, 2000);
 });
 
-// ✅ LINE Webhook
+// ✅ Webhook สำหรับรับข้อความจาก LINE + log groupId
 app.post("/webhook", async (req, res) => {
   const events = req.body.events;
 
@@ -132,6 +117,7 @@ app.post("/webhook", async (req, res) => {
         console.log(`💬 Text: ${userMessage}`);
         console.log(`👉 Copy this GROUP ID to your .env file as LINE_GROUP_ID=${groupId}`);
 
+        // ✅ ตอบกลับข้อความ
         try {
           await axios.post(
             "https://api.line.me/v2/bot/message/reply",
@@ -140,15 +126,15 @@ app.post("/webhook", async (req, res) => {
               messages: [
                 {
                   type: "text",
-                  text: `📡 รับข้อความของคุณแล้ว: "${userMessage}"`,
-                },
-              ],
+                  text: `📡 รับข้อความของคุณแล้ว: "${userMessage}"`
+                }
+              ]
             },
             {
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${LINE_ACCESS_TOKEN}`,
-              },
+                Authorization: `Bearer ${LINE_ACCESS_TOKEN}`
+              }
             }
           );
           console.log("✅ Reply message sent.");
@@ -162,7 +148,7 @@ app.post("/webhook", async (req, res) => {
   res.status(200).send("OK");
 });
 
-// ✅ Start server
+// ✅ เริ่ม server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
