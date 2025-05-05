@@ -9,15 +9,26 @@ app.use(express.json());
 app.use(cors());
 
 // ✅ Load Firebase service account from base64 env variable
-const serviceAccount = JSON.parse(
-  Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY, "base64").toString("utf8")
-);
+const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-// ✅ Initialize Firebase
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://new-alarm-fac-r1-v5-default-rtdb.asia-southeast1.firebasedatabase.app",
-});
+try {
+  // แปลง Base64 กลับเป็น JSON
+  const serviceAccountJson = Buffer.from(serviceAccountBase64, "base64").toString("utf8");
+  console.log("✅ Firebase service account key loaded.");
+
+  // Parse JSON เพื่อใช้งาน
+  const serviceAccount = JSON.parse(serviceAccountJson);
+
+  // ✅ Initialize Firebase
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://new-alarm-fac-r1-v5-default-rtdb.asia-southeast1.firebasedatabase.app",
+  });
+
+  console.log("✅ Firebase initialized successfully.");
+} catch (error) {
+  console.error("❌ Error loading Firebase service account:", error.message);
+}
 
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
 const LINE_GROUP_ID = process.env.LINE_GROUP_ID;
