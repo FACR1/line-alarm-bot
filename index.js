@@ -2,22 +2,24 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 require("dotenv").config();
-const admin = require("firebase-admin");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ✅ Load Firebase service account from base64 env variable
+const admin = require("firebase-admin");
+
+// ✅ แปลงค่า Base64 ของ Firebase service account
 const serviceAccountBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+let serviceAccount;
 
 try {
   // แปลง Base64 กลับเป็น JSON
   const serviceAccountJson = Buffer.from(serviceAccountBase64, "base64").toString("utf8");
-  console.log("✅ Firebase service account key loaded.");
 
-  // Parse JSON เพื่อใช้งาน
-  const serviceAccount = JSON.parse(serviceAccountJson);
+  // ตรวจสอบว่าเป็น JSON ที่ถูกต้อง
+  serviceAccount = JSON.parse(serviceAccountJson);
 
   // ✅ Initialize Firebase
   admin.initializeApp({
@@ -28,6 +30,7 @@ try {
   console.log("✅ Firebase initialized successfully.");
 } catch (error) {
   console.error("❌ Error loading Firebase service account:", error.message);
+  process.exit(1);  // ออกจากโปรแกรมเมื่อเกิดข้อผิดพลาด
 }
 
 const LINE_ACCESS_TOKEN = process.env.LINE_ACCESS_TOKEN;
