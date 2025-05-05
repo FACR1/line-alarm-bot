@@ -1,7 +1,7 @@
-require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
+require("dotenv").config();
 const admin = require("firebase-admin");
 
 const app = express();
@@ -86,10 +86,10 @@ ref.on("child_changed", async (snapshot) => {
 
       if (confirmedStatus === status) {
         if (status === "Alarm" && sentMessages[inputName] !== "Alarm") {
-          await sendLineMessage(line_message, inputName, status, line_message);
+          sendLineMessage(line_message, inputName, status, line_message);
           sentMessages[inputName] = "Alarm";
         } else if (status === "Clear Alarm" && sentMessages[inputName] === "Alarm") {
-          await sendLineMessage(line_message, inputName, status, line_message);
+          sendLineMessage(line_message, inputName, status, line_message);
           sentMessages[inputName] = "Clear";
         } else if (status === "normal") {
           sentMessages[inputName] = false;
